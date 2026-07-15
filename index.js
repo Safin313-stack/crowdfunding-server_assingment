@@ -19,21 +19,27 @@ const port = process.env.PORT || 5000;
 app.use(cors({ origin: [process.env.CLIENT_URL, 'http://localhost:5173'], credentials: true }));
 app.use(express.json());
 
-async function start() {
-  const collections = await connectDB();
+let dbReady = false;
 
-  app.use(authRoutes(collections));
-  app.use(userRoutes(collections));
-  app.use(campaignRoutes(collections));
-  app.use(contributionRoutes(collections));
-  app.use(withdrawalRoutes(collections));
-  app.use(notificationRoutes(collections));
-  app.use(paymentRoutes(collections));
-  app.use(reportRoutes(collections));
-  app.use(statsRoutes(collections));
+app.get('/', (req, res) => {
+  res.send(dbReady ? 'Crowdfunding server running (DB connected)' : 'Crowdfunding server running (DB NOT connected — check server logs / env vars)');
+});
 
-  app.get('/', (req, res) => res.send('Crowdfunding server running'));
-  app.listen(port, () => console.log(`Server listening on port ${port}`));
-}
+app.listen(port, () => console.log(`Server listening on port ${port}`));
 
-start().catch(console.dir);
+connectDB()
+  .then((collections) => {
+    app.use(authRoutes(collections));
+    app.use(userRoutes(collections));
+    app.use(campaignRoutes(collections));
+    app.use(contributionRoutes(collections));
+    app.use(withdrawalRoutes(collections));
+    app.use(notificationRoutes(collections));
+    app.use(paymentRoutes(collections));
+    app.use(reportRoutes(collections));
+    app.use(statsRoutes(collections));
+    dbReady = true;
+  })
+  .catch((err) => {
+    console.error('MongoDB connection failed:', err.message);
+  });
